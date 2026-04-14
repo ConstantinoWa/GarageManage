@@ -1,0 +1,1543 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>家庭車輛管理系統 v04142228</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #161920;
+    --surface2: #1e2130;
+    --surface3: #252a3a;
+    --border: #2a3050;
+    --orange: #f58220;
+    --orange-dim: #c46a18;
+    --orange-glow: rgba(245,130,32,0.15);
+    --cyan: #40c9e0;
+    --cyan-dim: #2a9ab0;
+    --red: #e05050;
+    --green: #4ec94e;
+    --text: #e8ecf5;
+    --text-dim: #8899b5;
+    --text-muted: #50607a;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'Noto Sans TC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── HEADER ─────────────────────────────── */
+  header {
+    background: var(--surface);
+    border-bottom: 2px solid var(--orange);
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+  }
+  .logo {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--orange);
+    text-shadow: 0 0 20px var(--orange);
+    margin-right: auto;
+  }
+  .logo span { color: var(--text-dim); font-weight: 400; font-size: 13px; letter-spacing: 1px; display: block; line-height: 1; }
+  .logo .ver { display: inline; font-size: 10px; color: var(--text-muted); font-family: 'Rajdhani', sans-serif; letter-spacing: 1px; font-weight: 400; vertical-align: middle; margin-left: 6px; text-shadow: none; }
+
+  /* ─── NAV TABS ────────────────────────────── */
+  .nav-tabs {
+    display: flex;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .nav-tabs::-webkit-scrollbar { display:none; }
+  .tab-btn {
+    flex: 0 0 auto;
+    padding: 12px 18px;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all .2s;
+    white-space: nowrap;
+  }
+  .tab-btn.active {
+    color: var(--orange);
+    border-bottom-color: var(--orange);
+    background: var(--orange-glow);
+  }
+  .tab-btn:hover:not(.active) { color: var(--text); background: rgba(255,255,255,0.03); }
+
+  /* ─── MAIN LAYOUT ─────────────────────────── */
+  main { padding: 16px; max-width: 800px; margin: 0 auto; }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ─── CARDS ───────────────────────────────── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .card-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  /* ─── VEHICLE CARDS ───────────────────────── */
+  .vehicle-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all .2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .vehicle-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--orange);
+  }
+  .vehicle-card:hover { border-color: var(--orange); transform: translateX(2px); }
+  .vehicle-card.selected { border-color: var(--orange); background: var(--surface3); }
+
+  .vc-header { display:flex; align-items:center; gap:10px; }
+  .vc-icon { font-size: 28px; }
+  .vc-info { flex: 1; }
+  .vc-name { font-size: 16px; font-weight: 700; color: var(--text); }
+  .vc-plate {
+    display: inline-block;
+    background: #fff;
+    color: #111;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 1px 7px;
+    border-radius: 3px;
+    letter-spacing: 1px;
+    margin-top: 2px;
+  }
+  .vc-actions { display: flex; gap: 6px; }
+
+  .vc-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .vc-stat { text-align: center; }
+  .vc-stat-val { font-family: 'Rajdhani', sans-serif; font-size: 18px; font-weight: 600; color: var(--orange); }
+  .vc-stat-label { font-size: 11px; color: var(--text-muted); }
+
+  /* ─── FORMS ───────────────────────────────── */
+  .form-group { margin-bottom: 14px; }
+  label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 5px; letter-spacing: .5px; }
+
+  input, select, textarea {
+    width: 100%;
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--orange); }
+  select option { background: var(--surface3); }
+  textarea { resize: vertical; min-height: 80px; }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+  /* ─── BUTTONS ─────────────────────────────── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .2s;
+    padding: 10px 18px;
+    white-space: nowrap;
+  }
+  .btn-primary { background: var(--orange); color: #fff; }
+  .btn-primary:hover { background: var(--orange-dim); }
+  .btn-secondary { background: var(--surface3); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--orange); color: var(--orange); }
+  .btn-danger { background: rgba(224,80,80,0.15); color: var(--red); border: 1px solid rgba(224,80,80,0.3); }
+  .btn-danger:hover { background: rgba(224,80,80,0.25); }
+  .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 6px; }
+  .btn-icon { padding: 7px; border-radius: 6px; font-size: 14px; }
+  .btn-full { width: 100%; }
+  .btn-ai { background: linear-gradient(135deg, #1a2a50, #0d1a35); color: var(--cyan); border: 1px solid var(--cyan-dim); }
+  .btn-ai:hover { background: linear-gradient(135deg, #1e3060, #1020 40); box-shadow: 0 0 12px rgba(64,201,224,0.2); }
+  .btn-ai:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ─── MAINTENANCE RECORDS ─────────────────── */
+  .maint-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .maint-date {
+    flex: 0 0 72px;
+    text-align: center;
+  }
+  .maint-date-m { font-size: 11px; color: var(--text-muted); }
+  .maint-date-d { font-family: 'Rajdhani', sans-serif; font-size: 28px; font-weight: 700; color: var(--orange); line-height: 1; }
+  .maint-date-y { font-size: 11px; color: var(--text-muted); }
+  .maint-body { flex: 1; }
+  .maint-items { font-size: 14px; font-weight: 500; color: var(--text); }
+  .maint-km {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    color: var(--cyan);
+    margin-top: 3px;
+  }
+  .maint-note { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .maint-cost {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--green);
+    flex: 0 0 auto;
+  }
+
+  /* ─── AI SCHEDULE ─────────────────────────── */
+  .ai-box {
+    background: linear-gradient(135deg, #0d1a2e, #0a1520);
+    border: 1px solid var(--cyan-dim);
+    border-radius: 12px;
+    padding: 14px;
+    margin-top: 10px;
+  }
+  .ai-box-title {
+    font-size: 12px;
+    color: var(--cyan);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .ai-loading { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 13px; }
+  .dot-spin { width: 8px; height: 8px; border-radius: 50%; background: var(--cyan); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+
+  .schedule-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .schedule-table th { color: var(--text-muted); font-size: 11px; font-weight: 500; padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--border); }
+  .schedule-table td { padding: 8px 8px; border-bottom: 1px solid rgba(42,48,80,0.5); vertical-align: top; }
+  .schedule-table tr:last-child td { border-bottom: none; }
+  .schedule-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .km-badge {
+    display: inline-block;
+    background: rgba(245,130,32,0.15);
+    color: var(--orange);
+    border: 1px solid rgba(245,130,32,0.3);
+    border-radius: 4px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 12px;
+    padding: 2px 6px;
+  }
+
+  /* ─── OVERLAY / MODAL ─────────────────────── */
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 200;
+    align-items: flex-end;
+  }
+  .overlay.open { display: flex; }
+  .overlay-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px 20px 0 0;
+    padding: 20px 16px;
+    width: 100%;
+    max-height: 92vh;
+    overflow-y: auto;
+    animation: slideUp .3s ease;
+  }
+  @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+  .overlay-handle {
+    width: 36px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 16px;
+  }
+  .overlay-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--orange);
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+  }
+
+  /* ─── BADGE / TAG ─────────────────────────── */
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin: 2px;
+  }
+  .badge-orange { background: rgba(245,130,32,0.15); color: var(--orange); border: 1px solid rgba(245,130,32,0.3); }
+  .badge-cyan { background: rgba(64,201,224,0.1); color: var(--cyan); border: 1px solid rgba(64,201,224,0.25); }
+  .badge-red { background: rgba(224,80,80,0.1); color: var(--red); border: 1px solid rgba(224,80,80,0.25); }
+  .badge-green { background: rgba(78,201,78,0.1); color: var(--green); border: 1px solid rgba(78,201,78,0.25); }
+
+  /* ─── EMPTY STATE ─────────────────────────── */
+  .empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+  }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-text { font-size: 14px; }
+
+  /* ─── STATS PAGE ──────────────────────────── */
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .stat-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+  }
+  .stat-box-val { font-family: 'Rajdhani', sans-serif; font-size: 28px; font-weight: 700; color: var(--orange); }
+  .stat-box-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+  /* ─── ALERT ───────────────────────────────── */
+  .alert {
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .alert-warn { background: rgba(245,130,32,0.12); border: 1px solid rgba(245,130,32,0.3); color: var(--orange); }
+  .alert-info { background: rgba(64,201,224,0.08); border: 1px solid rgba(64,201,224,0.2); color: var(--cyan); }
+
+  /* ─── MISC ────────────────────────────────── */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+  .text-dim { color: var(--text-dim); }
+  .text-muted { color: var(--text-muted); font-size: 12px; }
+  .flex { display: flex; }
+  .gap-8 { gap: 8px; }
+  .mb-10 { margin-bottom: 10px; }
+  .section-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  #apiKeyInput { font-family: monospace; font-size: 12px; }
+
+  .item-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+  .item-chip {
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 4px 10px;
+    font-size: 12px;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .item-chip:hover, .item-chip.active { background: var(--orange-glow); border-color: var(--orange); color: var(--orange); }
+
+  .progress-bar-wrap {
+    background: var(--surface3);
+    border-radius: 4px;
+    height: 6px;
+    overflow: hidden;
+    margin-top: 6px;
+  }
+  .progress-bar {
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--orange-dim), var(--orange));
+    transition: width .5s ease;
+  }
+  .progress-bar.warn { background: linear-gradient(90deg, #c45020, var(--red)); }
+
+  .next-due {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+  .next-due.overdue { color: var(--red); font-weight: 500; }
+  .next-due.soon { color: var(--orange); }
+
+  /* ─── QUICK VEHICLE BAR ───────────────────── */
+  .quick-bar {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 0 0 10px 0;
+  }
+  .quick-bar::-webkit-scrollbar { display: none; }
+  .quick-btn {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: all .2s;
+    min-width: 72px;
+  }
+  .quick-btn:hover { border-color: var(--orange); background: var(--surface3); }
+  .quick-btn.active {
+    border-color: var(--orange);
+    background: var(--orange-glow);
+    box-shadow: 0 0 12px rgba(245,130,32,0.2);
+  }
+  .quick-btn-icon { font-size: 22px; line-height: 1; }
+  .quick-btn-plate {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    background: rgba(255,255,255,0.08);
+    border-radius: 4px;
+    padding: 1px 5px;
+    letter-spacing: .5px;
+    white-space: nowrap;
+  }
+  .quick-btn.active .quick-btn-plate { background: var(--orange); color: #fff; }
+  .quick-btn-name {
+    font-size: 10px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    max-width: 70px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .quick-btn.active .quick-btn-name { color: var(--orange); }
+
+  /* ─── INLINE COMPARE ──────────────────────── */
+  .inline-compare {
+    border-bottom: 1px solid rgba(64,201,224,0.12);
+    background: rgba(64,201,224,0.05);
+    padding: 6px 14px;
+    border-radius: 10px 10px 0 0;
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ─── FUEL COMPARE ────────────────────────── */
+  .fuel-compare {
+    background: linear-gradient(135deg, #0e1a10, #0a1208);
+    border: 1px solid rgba(78,201,78,0.3);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-top: 6px;
+    font-size: 12px;
+  }
+  .fuel-compare-title { color: var(--green); font-size: 11px; letter-spacing: 1px; margin-bottom:6px; }
+  .fuel-compare-row { display:flex; justify-content:space-between; align-items:center; padding: 3px 0; border-bottom: 1px solid rgba(78,201,78,0.1); }
+  .fuel-compare-row:last-child { border-bottom: none; }
+  .fuel-compare-label { color: var(--text-muted); }
+  .fuel-compare-val { font-family: 'Rajdhani', sans-serif; font-size: 14px; font-weight: 600; color: var(--green); }
+  .fuel-compare-val.up { color: var(--red); }
+  .fuel-compare-val.down { color: var(--green); }
+  .fuel-tag {
+    display: inline-block;
+    background: rgba(245,130,32,0.2);
+    color: var(--orange);
+    border: 1px solid rgba(245,130,32,0.4);
+    border-radius: 4px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 1px 6px;
+    margin-right: 4px;
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    GARAGE<span class="ver">v04150005</span><span>家庭車輛管理系統</span>
+  </div>
+  <button class="btn btn-sm btn-secondary" onclick="showSettings()">⚙</button>
+</header>
+
+<nav class="nav-tabs" id="navTabs"></nav>
+
+<main>
+  <!-- ── 車輛列表 ── -->
+  <div class="page active" id="pageVehicles">
+    <div id="vehicleList"></div>
+    <button class="btn btn-primary btn-full" onclick="openAddVehicle()">＋ 新增車輛</button>
+  </div>
+
+  <!-- ── 維護記錄 ── -->
+  <div class="page" id="pageMaint">
+    <div id="quickVehicleBar"></div>
+    <div id="maintVehicleInfo"></div>
+    <div id="maintScheduleBox"></div>
+    <button class="btn btn-primary btn-full mb-10" onclick="openAddMaint()">＋ 新增維護記錄</button>
+    <div id="refuelCompareBox"></div>
+    <div id="maintList"></div>
+  </div>
+
+  <!-- ── 統計 ── -->
+  <div class="page" id="pageStats">
+    <div id="statsContent"></div>
+  </div>
+</main>
+
+<!-- ═══ 新增車輛 ═══ -->
+<div class="overlay" id="overlayVehicle">
+  <div class="overlay-panel">
+    <div class="overlay-handle"></div>
+    <div class="overlay-title" id="vehicleOverlayTitle">新增車輛</div>
+
+    <div class="form-group">
+      <label>車輛類型</label>
+      <div class="flex gap-8" style="flex-wrap:wrap">
+        <button class="item-chip active" data-type="car" onclick="selectType(this,'car')">🚗 轎車</button>
+        <button class="item-chip" data-type="suv" onclick="selectType(this,'suv')">🚙 休旅車</button>
+        <button class="item-chip" data-type="truck" onclick="selectType(this,'truck')">🚐 廂型車</button>
+        <button class="item-chip" data-type="motorcycle" onclick="selectType(this,'motorcycle')">🏍 機車</button>
+        <button class="item-chip" data-type="scooter" onclick="selectType(this,'scooter')">🛵 速克達</button>
+        <button class="item-chip" data-type="emicro" onclick="selectType(this,'emicro')">🛺 微電車</button>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>品牌</label>
+        <input id="vBrand" type="text" placeholder="Toyota / Honda…" oninput="autoUpdateModel()">
+      </div>
+      <div class="form-group">
+        <label>型號</label>
+        <input id="vModel" type="text" placeholder="Altis / PCX…" oninput="autoUpdateModel()">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>年份</label>
+        <input id="vYear" type="number" placeholder="2020" min="1990" max="2030">
+      </div>
+      <div class="form-group">
+        <label>車牌號碼</label>
+        <input id="vPlate" type="text" placeholder="ABC-1234" style="text-transform:uppercase">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>購買日期</label>
+        <input id="vPurchaseDate" type="date">
+      </div>
+      <div class="form-group">
+        <label>目前里程 (km)</label>
+        <input id="vCurrentKm" type="number" placeholder="25000">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>備註</label>
+      <input id="vNote" type="text" placeholder="顏色、其他說明…">
+    </div>
+
+    <div class="flex gap-8" style="margin-top:8px">
+      <button class="btn btn-secondary" style="flex:1" onclick="closeOverlay('overlayVehicle')">取消</button>
+      <button class="btn btn-primary" style="flex:2" onclick="saveVehicle()">儲存車輛</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 新增維護記錄 ═══ -->
+<div class="overlay" id="overlayMaint">
+  <div class="overlay-panel">
+    <div class="overlay-handle"></div>
+    <div class="overlay-title">新增維護記錄</div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>維護日期</label>
+        <input id="mDate" type="date">
+      </div>
+      <div class="form-group">
+        <label>當下里程 (km)</label>
+        <input id="mKm" type="number" placeholder="30000">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>維護項目（可多選）</label>
+      <div class="item-chips" id="maintItemChips"></div>
+      <input id="mItems" type="text" placeholder="自行輸入其他項目…">
+    </div>
+
+    <!-- 油品選擇，加油時才顯示 -->
+    <div id="fuelSection" style="display:none">
+      <div class="form-group">
+        <label>⛽ 油品種類</label>
+        <div class="item-chips" id="fuelChips">
+          <span class="item-chip fuel-chip" onclick="selectFuel(this,'92')">92 無鉛</span>
+          <span class="item-chip fuel-chip" onclick="selectFuel(this,'95')">95 無鉛</span>
+          <span class="item-chip fuel-chip" onclick="selectFuel(this,'98')">98 無鉛</span>
+          <span class="item-chip fuel-chip" onclick="selectFuel(this,'柴油')">⚫ 柴油</span>
+          <span class="item-chip fuel-chip" onclick="selectFuel(this,'電')">⚡ 充電</span>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>加油量 (公升)</label>
+          <input id="mLiters" type="number" placeholder="30" step="0.1">
+        </div>
+        <div class="form-group">
+          <label>單價 (NT$/公升)</label>
+          <input id="mUnitPrice" type="number" placeholder="31.5" step="0.1" oninput="calcFuelCost()">
+        </div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>費用 (NT$)</label>
+        <input id="mCost" type="number" placeholder="1500">
+      </div>
+      <div class="form-group">
+        <label>維修廠 / 地點</label>
+        <input id="mShop" type="text" placeholder="XXX汽車保養廠">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>備註</label>
+      <textarea id="mNote" placeholder="換的零件品牌、狀況說明…"></textarea>
+    </div>
+
+    <div class="flex gap-8" style="margin-top:8px">
+      <button class="btn btn-secondary" style="flex:1" onclick="closeOverlay('overlayMaint')">取消</button>
+      <button class="btn btn-primary" style="flex:2" onclick="saveMaint()">儲存記錄</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 設定 ═══ -->
+<div class="overlay" id="overlaySettings">
+  <div class="overlay-panel">
+    <div class="overlay-handle"></div>
+    <div class="overlay-title">⚙ 系統設定</div>
+
+    <div class="form-group">
+      <label>Anthropic API Key（自動查詢保養項目用）</label>
+      <input id="apiKeyInput" type="password" placeholder="sk-ant-…">
+      <div class="text-muted" style="margin-top:4px">API Key 僅存於本機，不會上傳</div>
+    </div>
+
+    <div class="flex gap-8" style="margin-top:4px">
+      <button class="btn btn-secondary" style="flex:1" onclick="closeOverlay('overlaySettings')">關閉</button>
+      <button class="btn btn-primary" style="flex:2" onclick="saveSettings()">儲存設定</button>
+    </div>
+
+    <hr class="divider">
+    <div class="section-label">資料管理</div>
+    <div class="flex gap-8">
+      <button class="btn btn-secondary btn-sm" style="flex:1" onclick="exportData()">📤 匯出 JSON</button>
+      <button class="btn btn-secondary btn-sm" style="flex:1" onclick="importData()">📥 匯入 JSON</button>
+    </div>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="handleImport(event)">
+
+    <hr class="divider">
+    <button class="btn btn-danger btn-sm btn-full" onclick="clearAllData()">🗑 清除所有資料</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//   DATA LAYER
+// ══════════════════════════════════════════════
+const DB_KEY = 'garage_data_v1';
+const SK_KEY = 'garage_sk';
+
+let db = { vehicles: [], maintenance: [] };
+let settings = { apiKey: '' };
+let currentVehicleId = null;
+let editingVehicleId = null;
+let selectedType = 'car';
+let selectedChips = new Set();
+
+function loadDB() {
+  try {
+    const raw = localStorage.getItem(DB_KEY);
+    if (raw) db = JSON.parse(raw);
+    const sk = localStorage.getItem(SK_KEY);
+    if (sk) settings.apiKey = sk;
+  } catch(e) {}
+}
+function saveDB() {
+  localStorage.setItem(DB_KEY, JSON.stringify(db));
+}
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+
+// ── vehicle helpers ──
+function getVehicle(id) { return db.vehicles.find(v => v.id === id); }
+function getMaintByVehicle(vid) {
+  return db.maintenance.filter(m => m.vehicleId === vid).sort((a,b) => b.date.localeCompare(a.date));
+}
+function getLastMaint(vid) {
+  const recs = getMaintByVehicle(vid);
+  return recs.length ? recs[0] : null;
+}
+function typeIcon(t) {
+  return {car:'🚗',suv:'🚙',truck:'🚐',motorcycle:'🏍',scooter:'🛵',emicro:'🛺'}[t] || '🚗';
+}
+
+// ══════════════════════════════════════════════
+//   RENDER
+// ══════════════════════════════════════════════
+function renderAll() {
+  renderTabs();
+  renderVehicles();
+  if (currentVehicleId) renderMaint(currentVehicleId);
+  renderStats();
+}
+
+function renderTabs() {
+  const nav = document.getElementById('navTabs');
+  const tabs = [
+    { id:'pageVehicles', label:'🚗 車輛' },
+    { id:'pageMaint',    label:'🔧 維護/加油' },
+    { id:'pageStats',    label:'📊 統計' }
+  ];
+  nav.innerHTML = tabs.map(t =>
+    `<button class="tab-btn${document.getElementById(t.id)?.classList.contains('active') ? ' active' : ''}"
+      onclick="switchPage('${t.id}')">${t.label}</button>`
+  ).join('');
+}
+
+function switchPage(pageId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+  renderTabs();
+  if (pageId === 'pageMaint') {
+    renderQuickBar();
+    if (currentVehicleId) renderMaint(currentVehicleId);
+  }
+  if (pageId === 'pageStats') renderStats();
+}
+
+// ── Quick Vehicle Bar ──
+function renderQuickBar() {
+  const el = document.getElementById('quickVehicleBar');
+  if (!el) return;
+  if (!db.vehicles.length) {
+    el.innerHTML = `<div class="text-muted" style="padding:8px 0 12px">尚無車輛，請先至「車輛」頁新增</div>`;
+    return;
+  }
+  el.innerHTML = `<div class="quick-bar">` +
+    db.vehicles.map(v => `
+      <button class="quick-btn${v.id === currentVehicleId ? ' active' : ''}"
+        onclick="quickSelectVehicle('${v.id}')">
+        <div class="quick-btn-icon">${typeIcon(v.type)}</div>
+        <div class="quick-btn-plate">${v.plate || v.brand}</div>
+        <div class="quick-btn-name">${v.brand} ${v.model}</div>
+      </button>`).join('') +
+  `</div>`;
+}
+
+function quickSelectVehicle(id) {
+  currentVehicleId = id;
+  renderQuickBar();
+  renderMaint(id);
+  renderVehicles();
+}
+
+function renderVehicles() {
+  const el = document.getElementById('vehicleList');
+  if (!db.vehicles.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🚗</div><div class="empty-text">尚無車輛，點下方新增</div></div>`;
+    return;
+  }
+  el.innerHTML = db.vehicles.map(v => {
+    const maints = getMaintByVehicle(v.id);
+    const last = maints[0];
+    const totalCost = maints.reduce((s,m) => s + (m.cost || 0), 0);
+    const age = v.purchaseDate ? Math.floor((Date.now() - new Date(v.purchaseDate)) / (1000*60*60*24*365)) : '—';
+    return `
+    <div class="vehicle-card${v.id === currentVehicleId ? ' selected' : ''}" onclick="selectVehicle('${v.id}')">
+      <div class="vc-header">
+        <div class="vc-icon">${typeIcon(v.type)}</div>
+        <div class="vc-info">
+          <div class="vc-name">${v.brand} ${v.model} ${v.year ? v.year+'年' : ''}</div>
+          ${v.plate ? `<div class="vc-plate">${v.plate}</div>` : ''}
+        </div>
+        <div class="vc-actions">
+          <button class="btn btn-icon btn-secondary" onclick="event.stopPropagation();openEditVehicle('${v.id}')">✏️</button>
+          <button class="btn btn-icon btn-danger" onclick="event.stopPropagation();deleteVehicle('${v.id}')">🗑</button>
+        </div>
+      </div>
+      <div class="vc-stats">
+        <div class="vc-stat">
+          <div class="vc-stat-val">${v.currentKm ? v.currentKm.toLocaleString() : '—'}</div>
+          <div class="vc-stat-label">目前里程 km</div>
+        </div>
+        <div class="vc-stat">
+          <div class="vc-stat-val">${maints.length}</div>
+          <div class="vc-stat-label">維護次數</div>
+        </div>
+        <div class="vc-stat">
+          <div class="vc-stat-val">${totalCost ? '$'+Math.round(totalCost/1000)+'k' : '—'}</div>
+          <div class="vc-stat-label">總費用</div>
+        </div>
+      </div>
+      ${last ? `<div class="text-muted" style="margin-top:8px">最後維護：${last.date} ·  ${last.items}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ── Maint ──
+function selectVehicle(id) {
+  currentVehicleId = id;
+  renderVehicles();
+  renderMaint(id);
+  switchPage('pageMaint');
+}
+
+function daysBetween(dateA, dateB) {
+  return Math.round((new Date(dateA) - new Date(dateB)) / 86400000);
+}
+
+function daysAgoLabel(days) {
+  if (days === 0) return '今天';
+  if (days === 1) return '1 天前';
+  if (days < 30) return days + ' 天前';
+  if (days < 365) return Math.floor(days/30) + ' 個月前';
+  return Math.floor(days/365) + ' 年前';
+}
+
+// Find the most recent previous record sharing at least one item keyword
+function findPrevRecord(cur, sortedRecs) {
+  // sortedRecs is newest-first; everything after cur's index is older
+  const idx = sortedRecs.findIndex(r => r.id === cur.id);
+  if (idx === -1) return null;
+  const older = sortedRecs.slice(idx + 1);
+
+  if (cur.isRefuel) return older.find(r => r.isRefuel) || null;
+
+  const curKeywords = cur.items.split(/[、,，\s]+/).filter(Boolean);
+  return older.find(r => {
+    const rk = r.items.split(/[、,，\s]+/).filter(Boolean);
+    return curKeywords.some(k => rk.some(rw => rw.includes(k) || k.includes(rw)));
+  }) || null;
+}
+
+function buildInlineCompare(cur, prev) {
+  if (!prev) return '';
+  const days = daysBetween(cur.date, prev.date);
+  const kmDiff = cur.km && prev.km ? cur.km - prev.km : null;
+  const costDiff = cur.cost && prev.cost ? cur.cost - prev.cost : null;
+
+  let parts = [];
+  parts.push(`距上次 <span style="color:var(--cyan)">${daysAgoLabel(days)}</span>`);
+  if (kmDiff !== null && kmDiff > 0)
+    parts.push(`行駛 <span style="color:var(--orange)">${kmDiff.toLocaleString()} km</span>`);
+  if (cur.isRefuel && cur.liters && kmDiff > 0)
+    parts.push(`油耗 <span style="color:var(--green)">${(kmDiff/cur.liters).toFixed(1)} km/L</span>`);
+  if (costDiff !== null) {
+    const col = costDiff > 0 ? 'var(--red)' : 'var(--green)';
+    parts.push(`費用 <span style="color:${col}">${costDiff>0?'▲':'▼'} ${Math.abs(costDiff).toLocaleString()}元</span>`);
+  }
+  if (cur.isRefuel && cur.unitPrice && prev.unitPrice) {
+    const ud = (cur.unitPrice - prev.unitPrice).toFixed(1);
+    const col = parseFloat(ud) > 0 ? 'var(--red)' : 'var(--green)';
+    parts.push(`油價 <span style="color:${col}">${parseFloat(ud)>0?'▲':'▼'} ${Math.abs(ud)}元/L</span>`);
+  }
+
+  return `<div class="inline-compare">${parts.join(' · ')}</div>`;
+}
+
+function renderMaint(vid) {
+  renderQuickBar();
+  const v = getVehicle(vid);
+  if (!v) return;
+
+  // clear compare box when switching vehicle
+  const cbox = document.getElementById('refuelCompareBox');
+  if (cbox) cbox.innerHTML = '';
+
+  // vehicle info bar
+  document.getElementById('maintVehicleInfo').innerHTML = `
+    <div class="card" style="margin-bottom:10px;display:flex;align-items:center;gap:12px">
+      <div style="font-size:36px">${typeIcon(v.type)}</div>
+      <div style="flex:1">
+        <div style="font-size:16px;font-weight:700">${v.brand} ${v.model}</div>
+        <div class="text-muted">${v.plate || ''} ${v.year ? '· '+v.year+'年' : ''} ${v.purchaseDate ? '· 購入 '+v.purchaseDate : ''}</div>
+      </div>
+      ${v.currentKm ? `<div style="text-align:right">
+        <div style="font-family:Rajdhani,sans-serif;font-size:22px;font-weight:700;color:var(--orange)">${v.currentKm.toLocaleString()}</div>
+        <div class="text-muted">目前里程</div>
+      </div>` : ''}
+    </div>`;
+
+  renderScheduleBox(v);
+
+  const recs = getMaintByVehicle(vid);
+  const el = document.getElementById('maintList');
+  if (!recs.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🔧</div><div class="empty-text">尚無維護記錄</div></div>`;
+    return;
+  }
+  el.innerHTML = recs.map(m => {
+    const d = new Date(m.date);
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const prev = findPrevRecord(m, recs);
+    const compareHTML = buildInlineCompare(m, prev);
+    return `
+    <div class="maint-item" style="flex-direction:column;gap:0;padding:0">
+      ${compareHTML}
+      <div style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px">
+        <div class="maint-date">
+          <div class="maint-date-m">${months[d.getMonth()]}</div>
+          <div class="maint-date-d">${String(d.getDate()).padStart(2,'0')}</div>
+          <div class="maint-date-y">${d.getFullYear()}</div>
+        </div>
+        <div class="maint-body">
+          <div class="maint-items">${m.isRefuel && m.fuelType ? `<span class="fuel-tag">${m.fuelType}</span>` : ''}${m.items}</div>
+          <div class="maint-km">📍 ${m.km ? m.km.toLocaleString()+' km' : '未記錄里程'}${m.isRefuel && m.liters ? ` · ⛽ ${m.liters}L` : ''}${m.isRefuel && m.unitPrice ? ` · ${m.unitPrice}元/L` : ''}</div>
+          ${m.shop ? `<div class="text-muted">🏪 ${m.shop}</div>` : ''}
+          ${m.note ? `<div class="maint-note">${m.note}</div>` : ''}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+          <div class="maint-cost">${m.cost ? 'NT$'+m.cost.toLocaleString() : ''}</div>
+          <button class="btn btn-icon btn-danger" onclick="confirmDeleteMaint('${m.id}',this)">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderScheduleBox(v) {
+  const box = document.getElementById('maintScheduleBox');
+  const hasKey = !!settings.apiKey;
+  const modelStr = `${v.brand} ${v.model}`;
+  const cached = v.scheduleCache;
+
+  if (cached) {
+    box.innerHTML = buildScheduleHTML(cached, v);
+    return;
+  }
+
+  box.innerHTML = `
+    <div class="ai-box" style="margin-bottom:10px">
+      <div class="ai-box-title">🤖 AI 官方保養建議</div>
+      <div style="font-size:13px;color:var(--text-dim);margin-bottom:10px">${modelStr} 的保養週期與項目</div>
+      ${!hasKey
+        ? `<div class="alert alert-info">⚙ 請先在設定頁填入 Anthropic API Key 以啟用 AI 查詢</div>`
+        : `<button class="btn btn-ai btn-full" id="btnFetchSchedule" onclick="fetchSchedule('${v.id}')">
+            🌐 上網查詢保養項目
+          </button>`
+      }
+    </div>`;
+}
+
+function buildScheduleHTML(scheduleData, v) {
+  const rows = scheduleData.items.map(item => {
+    const progress = v.currentKm && item.km ? Math.min(100, Math.round((v.currentKm % item.km) / item.km * 100)) : null;
+    const nextKm = v.currentKm && item.km ? Math.ceil(v.currentKm / item.km) * item.km : null;
+    const remaining = nextKm ? nextKm - v.currentKm : null;
+    const isOverdue = remaining !== null && remaining <= 0;
+    const isSoon = remaining !== null && remaining <= 1000 && remaining > 0;
+    return `<tr>
+      <td><span class="badge badge-orange">${item.category || '一般'}</span></td>
+      <td style="font-size:13px;font-weight:500">${item.name}</td>
+      <td>
+        ${item.km ? `<span class="km-badge">每 ${item.km.toLocaleString()} km</span>` : ''}
+        ${item.months ? `<span class="km-badge" style="background:rgba(64,201,224,0.1);color:var(--cyan);border-color:rgba(64,201,224,0.3)">每 ${item.months} 月</span>` : ''}
+        ${progress !== null ? `
+          <div class="progress-bar-wrap"><div class="progress-bar${isOverdue||isSoon?' warn':''}" style="width:${progress}%"></div></div>
+          <div class="next-due${isOverdue?' overdue':isSoon?' soon':''}">
+            ${isOverdue ? '⚠ 已超過換油里程' : isSoon ? `⚡ 還剩 ${remaining.toLocaleString()} km` : `下次 ${nextKm.toLocaleString()} km`}
+          </div>` : ''}
+      </td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <div class="ai-box" style="margin-bottom:10px">
+      <div class="ai-box-title">🌐 網路查詢保養建議 <span style="font-size:10px;opacity:.6">${v.brand} ${v.model}</span>
+        <button class="btn btn-sm btn-secondary" style="margin-left:auto;padding:3px 8px;font-size:11px" onclick="clearScheduleCache('${v.id}')">↺ 重新查詢</button>
+      </div>
+      ${scheduleData.note ? `<div class="alert alert-info" style="margin-bottom:8px">ℹ ${scheduleData.note}</div>` : ''}
+      <table class="schedule-table">
+        <thead><tr><th>類別</th><th>項目</th><th>建議週期</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+// ── Stats ──
+function renderStats() {
+  const el = document.getElementById('statsContent');
+  if (!db.vehicles.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">無資料</div></div>`;
+    return;
+  }
+  const totalVehicles = db.vehicles.length;
+  const totalMaint = db.maintenance.length;
+  const totalCost = db.maintenance.reduce((s,m) => s + (m.cost||0), 0);
+  const thisYear = new Date().getFullYear();
+  const yearCost = db.maintenance.filter(m => m.date?.startsWith(thisYear)).reduce((s,m) => s+(m.cost||0),0);
+
+  let html = `
+    <div class="stat-grid">
+      <div class="stat-box"><div class="stat-box-val">${totalVehicles}</div><div class="stat-box-label">車輛數</div></div>
+      <div class="stat-box"><div class="stat-box-val">${totalMaint}</div><div class="stat-box-label">維護記錄</div></div>
+      <div class="stat-box"><div class="stat-box-val">$${Math.round(totalCost/1000)}k</div><div class="stat-box-label">累計費用</div></div>
+      <div class="stat-box"><div class="stat-box-val">$${Math.round(yearCost/1000)}k</div><div class="stat-box-label">${thisYear} 年費用</div></div>
+    </div>`;
+
+  db.vehicles.forEach(v => {
+    const maints = getMaintByVehicle(v.id);
+    if (!maints.length) return;
+    const vCost = maints.reduce((s,m) => s+(m.cost||0),0);
+    html += `
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="font-size:24px">${typeIcon(v.type)}</span>
+        <span style="font-weight:700">${v.brand} ${v.model}</span>
+        <span class="badge badge-orange" style="margin-left:auto">NT$${vCost.toLocaleString()}</span>
+      </div>`;
+    // group by year
+    const byYear = {};
+    maints.forEach(m => {
+      const y = m.date?.slice(0,4) || '不明';
+      if (!byYear[y]) byYear[y] = { count:0, cost:0 };
+      byYear[y].count++;
+      byYear[y].cost += m.cost||0;
+    });
+    Object.entries(byYear).sort((a,b)=>b[0].localeCompare(a[0])).forEach(([year,data]) => {
+      html += `<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid var(--border)">
+        <span class="text-dim">${year} 年 · ${data.count} 次</span>
+        <span style="color:var(--orange)">NT$${data.cost.toLocaleString()}</span>
+      </div>`;
+    });
+    html += '</div>';
+  });
+
+  el.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════
+//   VEHICLE CRUD
+// ══════════════════════════════════════════════
+function openAddVehicle() {
+  editingVehicleId = null;
+  document.getElementById('vehicleOverlayTitle').textContent = '新增車輛';
+  ['vBrand','vModel','vYear','vPlate','vPurchaseDate','vCurrentKm','vNote'].forEach(id => document.getElementById(id).value = '');
+  selectedType = 'car';
+  document.querySelectorAll('[data-type]').forEach(b => b.classList.toggle('active', b.dataset.type === 'car'));
+  document.getElementById('overlayVehicle').classList.add('open');
+}
+function openEditVehicle(id) {
+  const v = getVehicle(id);
+  if (!v) return;
+  editingVehicleId = id;
+  document.getElementById('vehicleOverlayTitle').textContent = '編輯車輛';
+  document.getElementById('vBrand').value = v.brand || '';
+  document.getElementById('vModel').value = v.model || '';
+  document.getElementById('vYear').value = v.year || '';
+  document.getElementById('vPlate').value = v.plate || '';
+  document.getElementById('vPurchaseDate').value = v.purchaseDate || '';
+  document.getElementById('vCurrentKm').value = v.currentKm || '';
+  document.getElementById('vNote').value = v.note || '';
+  selectedType = v.type || 'car';
+  document.querySelectorAll('[data-type]').forEach(b => b.classList.toggle('active', b.dataset.type === selectedType));
+  document.getElementById('overlayVehicle').classList.add('open');
+}
+function selectType(btn, type) {
+  selectedType = type;
+  document.querySelectorAll('[data-type]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function autoUpdateModel() {} // placeholder for future model lookup
+
+function saveVehicle() {
+  const brand = document.getElementById('vBrand').value.trim();
+  const model = document.getElementById('vModel').value.trim();
+  if (!brand) { alert('請輸入品牌'); return; }
+
+  const data = {
+    type: selectedType,
+    brand,
+    model,
+    year: document.getElementById('vYear').value || '',
+    plate: document.getElementById('vPlate').value.toUpperCase().trim(),
+    purchaseDate: document.getElementById('vPurchaseDate').value,
+    currentKm: parseInt(document.getElementById('vCurrentKm').value) || 0,
+    note: document.getElementById('vNote').value.trim()
+  };
+
+  if (editingVehicleId) {
+    const idx = db.vehicles.findIndex(v => v.id === editingVehicleId);
+    if (idx >= 0) {
+      // preserve scheduleCache if brand+model unchanged
+      const old = db.vehicles[idx];
+      if (old.brand !== data.brand || old.model !== data.model) data.scheduleCache = null;
+      db.vehicles[idx] = { ...old, ...data };
+    }
+  } else {
+    db.vehicles.push({ id: uid(), ...data, scheduleCache: null, createdAt: new Date().toISOString() });
+  }
+  saveDB();
+  closeOverlay('overlayVehicle');
+  renderVehicles();
+}
+
+function deleteVehicle(id) {
+  if (!confirm('確定刪除此車輛及所有維護記錄？')) return;
+  db.vehicles = db.vehicles.filter(v => v.id !== id);
+  db.maintenance = db.maintenance.filter(m => m.vehicleId !== id);
+  if (currentVehicleId === id) currentVehicleId = null;
+  saveDB();
+  renderVehicles();
+  if (!currentVehicleId) switchPage('pageVehicles');
+}
+
+// ══════════════════════════════════════════════
+//   MAINTENANCE CRUD
+// ══════════════════════════════════════════════
+const MAINT_PRESETS = {
+  car: ['加油','機油更換','機油濾芯','空氣濾清器','燃油濾清器','火星塞','輪胎旋轉','前輪煞車皮','後輪煞車皮','冷卻液更換','變速箱油','傳動液','電瓶更換','雨刷更換','冷氣濾芯'],
+  suv: ['加油','機油更換','機油濾芯','空氣濾清器','四輪定位','輪胎旋轉','前煞車片','後煞車片','冷卻液','變速箱油','火星塞','電瓶','雨刷'],
+  motorcycle: ['加油','機油更換','機油濾網','前輪煞車片','後輪煞車片','空氣濾清器','火星塞','鏈條清潔調整','輪胎更換','電瓶'],
+  scooter: ['加油','機油更換','傳動皮帶','前煞車皮','後煞車皮','空氣濾清器','火星塞','電瓶','輪胎'],
+  truck: ['加油','機油更換','機油濾芯','空氣濾清器','火星塞','輪胎旋轉','煞車片','冷卻液','雨刷','電瓶'],
+  emicro: ['充電','電池檢查','電池容量測試','電池更換','前煞車皮','後煞車皮','輪胎更換','輪胎氣壓','傳動皮帶','剎車液','車燈檢查','充電器檢查','控制器檢查'],
+};
+
+function openAddMaint() {
+  if (!currentVehicleId) { alert('請先選擇車輛'); return; }
+  selectedChips.clear();
+
+  // set today
+  document.getElementById('mDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('mKm').value = '';
+  document.getElementById('mItems').value = '';
+  document.getElementById('mCost').value = '';
+  document.getElementById('mShop').value = '';
+  document.getElementById('mNote').value = '';
+
+  // preset chips
+  const v = getVehicle(currentVehicleId);
+  const presets = MAINT_PRESETS[v?.type] || MAINT_PRESETS.car;
+  document.getElementById('maintItemChips').innerHTML = presets.map(p =>
+    `<span class="item-chip" onclick="toggleChip(this,'${p}')">${p}</span>`
+  ).join('');
+
+  document.getElementById('overlayMaint').classList.add('open');
+}
+
+let selectedFuel = '';
+
+function selectFuel(el, val) {
+  selectedFuel = val;
+  document.querySelectorAll('.fuel-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function calcFuelCost() {
+  const liters = parseFloat(document.getElementById('mLiters').value) || 0;
+  const unit = parseFloat(document.getElementById('mUnitPrice').value) || 0;
+  if (liters && unit) document.getElementById('mCost').value = Math.round(liters * unit);
+}
+
+function getLastRefuel(vid) {
+  return db.maintenance
+    .filter(m => m.vehicleId === vid && m.isRefuel)
+    .sort((a,b) => b.date.localeCompare(a.date))[0] || null;
+}
+
+function openAddMaint() {
+  if (!currentVehicleId) { alert('請先選擇車輛'); return; }
+  selectedChips.clear();
+  selectedFuel = '';
+
+  document.getElementById('mDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('mKm').value = '';
+  document.getElementById('mItems').value = '';
+  document.getElementById('mCost').value = '';
+  document.getElementById('mShop').value = '';
+  document.getElementById('mNote').value = '';
+  document.getElementById('mLiters').value = '';
+  document.getElementById('mUnitPrice').value = '';
+  document.getElementById('fuelSection').style.display = 'none';
+  document.querySelectorAll('.fuel-chip').forEach(c => c.classList.remove('active'));
+
+  // preset chips
+  const v = getVehicle(currentVehicleId);
+  const presets = MAINT_PRESETS[v?.type] || MAINT_PRESETS.car;
+  document.getElementById('maintItemChips').innerHTML = presets.map(p =>
+    `<span class="item-chip" onclick="toggleChip(this,'${p}')">${p}</span>`
+  ).join('');
+
+  // auto-recall last fuel type
+  const lastRefuel = getLastRefuel(currentVehicleId);
+  if (lastRefuel?.fuelType) {
+    selectedFuel = lastRefuel.fuelType;
+  }
+
+  document.getElementById('overlayMaint').classList.add('open');
+}
+
+function toggleChip(el, val) {
+  el.classList.toggle('active');
+  if (el.classList.contains('active')) selectedChips.add(val);
+  else selectedChips.delete(val);
+
+  const isRefuel = selectedChips.has('加油') || selectedChips.has('充電');
+  const fuelSec = document.getElementById('fuelSection');
+  fuelSec.style.display = isRefuel ? 'block' : 'none';
+
+  if (isRefuel && selectedFuel) {
+    document.querySelectorAll('.fuel-chip').forEach(c => {
+      c.classList.toggle('active', c.textContent.includes(selectedFuel));
+    });
+  }
+}
+
+function syncChipsToInput() {}
+
+function saveMaint() {
+  const date = document.getElementById('mDate').value;
+  if (!date) { alert('請填寫日期'); return; }
+
+  const chipItems = [...selectedChips].join('、');
+  const extraItems = document.getElementById('mItems').value.trim();
+  const items = [chipItems, extraItems].filter(Boolean).join('、');
+  if (!items) { alert('請選擇或輸入維護項目'); return; }
+
+  const km = parseInt(document.getElementById('mKm').value) || 0;
+  const cost = parseInt(document.getElementById('mCost').value) || 0;
+  const isRefuel = selectedChips.has('加油') || selectedChips.has('充電');
+  const liters = parseFloat(document.getElementById('mLiters').value) || 0;
+  const unitPrice = parseFloat(document.getElementById('mUnitPrice').value) || 0;
+
+  // get previous refuel BEFORE pushing new record
+  const prevRefuel = isRefuel ? getLastRefuel(currentVehicleId) : null;
+
+  const rec = {
+    id: uid(),
+    vehicleId: currentVehicleId,
+    date, km, items, cost,
+    shop: document.getElementById('mShop').value.trim(),
+    note: document.getElementById('mNote').value.trim(),
+    isRefuel,
+    fuelType: isRefuel ? selectedFuel : '',
+    liters: isRefuel ? liters : 0,
+    unitPrice: isRefuel ? unitPrice : 0,
+  };
+  db.maintenance.push(rec);
+
+  // update vehicle currentKm
+  const v = getVehicle(currentVehicleId);
+  if (v && km > (v.currentKm || 0)) v.currentKm = km;
+
+  saveDB();
+  closeOverlay('overlayMaint');
+  renderMaint(currentVehicleId);
+  renderVehicles();
+
+  // show compare AFTER render so #refuelCompareBox exists
+  if (isRefuel && prevRefuel && prevRefuel.km && km) {
+    showRefuelCompare(rec, prevRefuel);
+  }
+}
+
+function showRefuelCompare(cur, prev) {
+  const box = document.getElementById('refuelCompareBox');
+  if (!box) return;
+
+  const kmDiff = cur.km && prev.km ? cur.km - prev.km : null;
+  const costDiff = cur.cost && prev.cost ? cur.cost - prev.cost : null;
+  const unitDiff = cur.unitPrice && prev.unitPrice ? (cur.unitPrice - prev.unitPrice).toFixed(1) : null;
+  const kmPerLiter = cur.liters && kmDiff > 0 ? (kmDiff / cur.liters).toFixed(1) : null;
+
+  let rows = '';
+  if (kmDiff !== null) rows += `<div class="fuel-compare-row">
+    <span class="fuel-compare-label">距上次行駛</span>
+    <span class="fuel-compare-val">${kmDiff > 0 ? kmDiff.toLocaleString()+' km' : '—'}</span>
+  </div>`;
+  if (kmPerLiter) rows += `<div class="fuel-compare-row">
+    <span class="fuel-compare-label">平均油耗</span>
+    <span class="fuel-compare-val">${kmPerLiter} km/L</span>
+  </div>`;
+  if (costDiff !== null) rows += `<div class="fuel-compare-row">
+    <span class="fuel-compare-label">費用差異</span>
+    <span class="fuel-compare-val ${costDiff>0?'up':'down'}">${costDiff>0?'▲ +':'▼ '}${Math.abs(costDiff).toLocaleString()} 元</span>
+  </div>`;
+  if (unitDiff !== null) rows += `<div class="fuel-compare-row">
+    <span class="fuel-compare-label">油價差異</span>
+    <span class="fuel-compare-val ${parseFloat(unitDiff)>0?'up':'down'}">${parseFloat(unitDiff)>0?'▲ +':'▼ '}${Math.abs(unitDiff)} 元/L</span>
+  </div>`;
+  rows += `<div class="fuel-compare-row">
+    <span class="fuel-compare-label">上次加油</span>
+    <span class="fuel-compare-val" style="color:var(--text-muted);font-size:12px">${prev.km ? prev.km.toLocaleString()+' km' : ''} · ${daysAgoLabel(daysBetween(cur.date, prev.date))}</span>
+  </div>`;
+
+  box.innerHTML = `
+    <div class="fuel-compare" style="margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="fuel-compare-title" style="margin-bottom:0">⛽ 本次加油比對 ${cur.fuelType ? '<span class="fuel-tag">'+cur.fuelType+'</span>' : ''}</div>
+        <button onclick="document.getElementById('refuelCompareBox').innerHTML=''" style="background:none;border:none;color:var(--text-muted);font-size:16px;cursor:pointer;padding:0 2px">✕</button>
+      </div>
+      ${rows}
+    </div>`;
+}
+
+
+function deleteMaint(id) {
+  db.maintenance = db.maintenance.filter(m => m.id !== id);
+  saveDB();
+  renderMaint(currentVehicleId);
+  renderStats();
+}
+
+function confirmDeleteMaint(id, btn) {
+  // replace button with inline confirm
+  const wrap = btn.parentElement;
+  wrap.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+      <span style="font-size:11px;color:var(--red)">確定刪除？</span>
+      <div style="display:flex;gap:4px">
+        <button class="btn btn-sm btn-secondary" onclick="renderMaint(currentVehicleId)">否</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteMaint('${id}')">是</button>
+      </div>
+    </div>`;
+}
+
+// ══════════════════════════════════════════════
+//   AI SCHEDULE FETCH
+// ══════════════════════════════════════════════
+async function fetchSchedule(vid) {
+  const v = getVehicle(vid);
+  if (!v || !settings.apiKey) return;
+
+  const btn = document.getElementById('btnFetchSchedule');
+  const box = document.getElementById('maintScheduleBox');
+  if (btn) btn.disabled = true;
+
+  box.innerHTML = `
+    <div class="ai-box" style="margin-bottom:10px">
+      <div class="ai-box-title">🌐 網路查詢保養建議</div>
+      <div class="ai-loading"><div class="dot-spin"></div>正在上網搜尋 ${v.brand} ${v.model} 保養資料…</div>
+    </div>`;
+
+  const modelName = `${v.brand} ${v.model}${v.year ? ' ' + v.year + '年' : ''}`;
+  const prompt = `請使用網路搜尋工具，查詢「${modelName}」的官方建議保養項目與里程週期。
+
+搜尋建議關鍵字：「${v.brand} ${v.model} 保養週期 官方」或「${v.brand} ${v.model} maintenance schedule」
+
+找到資料後，請以 JSON 格式回覆，只輸出 JSON，不要有任何其他文字或 markdown：
+{
+  "note": "資料來源說明（例如：來自官方網站/車主手冊）",
+  "items": [
+    {
+      "category": "引擎",
+      "name": "機油更換",
+      "km": 5000,
+      "months": 6
+    }
+  ]
+}
+
+category 可為：引擎、傳動、煞車、輪胎、電氣、冷卻、底盤、車身、其他
+km 為建議里程間隔（若無則為 null），months 為月份間隔（若無則為 null）。
+請盡量依網路搜尋到的官方或可信資料填寫，至少列出 8 項常見保養項目。`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2000,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error.message);
+
+    // extract text from all content blocks (may include tool_use / tool_result blocks)
+    let text = data.content
+      .filter(c => c.type === 'text')
+      .map(c => c.text || '')
+      .join('');
+    text = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(text);
+
+    // cache
+    const idx = db.vehicles.findIndex(vv => vv.id === vid);
+    if (idx >= 0) {
+      db.vehicles[idx].scheduleCache = parsed;
+      saveDB();
+    }
+    box.innerHTML = buildScheduleHTML(parsed, db.vehicles[idx]);
+  } catch(err) {
+    box.innerHTML = `
+      <div class="ai-box" style="margin-bottom:10px">
+        <div class="ai-box-title">🤖 AI 官方保養建議</div>
+        <div class="alert alert-warn">⚠ 查詢失敗：${err.message}</div>
+        <button class="btn btn-ai btn-full" onclick="fetchSchedule('${vid}')">重試</button>
+      </div>`;
+  }
+}
+
+function clearScheduleCache(vid) {
+  const idx = db.vehicles.findIndex(v => v.id === vid);
+  if (idx >= 0) {
+    db.vehicles[idx].scheduleCache = null;
+    saveDB();
+    renderMaint(vid);
+  }
+}
+
+// ══════════════════════════════════════════════
+//   SETTINGS
+// ══════════════════════════════════════════════
+function showSettings() {
+  document.getElementById('apiKeyInput').value = settings.apiKey || '';
+  document.getElementById('overlaySettings').classList.add('open');
+}
+function saveSettings() {
+  settings.apiKey = document.getElementById('apiKeyInput').value.trim();
+  localStorage.setItem(SK_KEY, settings.apiKey);
+  closeOverlay('overlaySettings');
+  alert('設定已儲存');
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'garage_backup_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function importData() { document.getElementById('importFile').click(); }
+function handleImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!data.vehicles || !data.maintenance) throw new Error('格式錯誤');
+      if (!confirm(`匯入 ${data.vehicles.length} 台車輛 / ${data.maintenance.length} 筆記錄？（將覆蓋現有資料）`)) return;
+      db = data;
+      saveDB();
+      renderAll();
+      closeOverlay('overlaySettings');
+      alert('匯入成功');
+    } catch(err) { alert('匯入失敗：' + err.message); }
+  };
+  reader.readAsText(file);
+}
+function clearAllData() {
+  if (!confirm('確定清除所有資料？此操作無法復原！')) return;
+  db = { vehicles: [], maintenance: [] };
+  saveDB();
+  currentVehicleId = null;
+  renderAll();
+  closeOverlay('overlaySettings');
+}
+
+// ══════════════════════════════════════════════
+//   OVERLAY HELPERS
+// ══════════════════════════════════════════════
+function closeOverlay(id) {
+  document.getElementById(id).classList.remove('open');
+}
+// tap outside to close
+document.querySelectorAll('.overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target === o) closeOverlay(o.id); });
+});
+
+// ══════════════════════════════════════════════
+//   INIT
+// ══════════════════════════════════════════════
+loadDB();
+renderAll();
+</script>
+</body>
+</html>
