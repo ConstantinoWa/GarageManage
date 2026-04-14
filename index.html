@@ -528,8 +528,9 @@
 
 <header>
   <div class="logo">
-    GARAGE<span class="ver">v04150005</span><span>家庭車輛管理系統</span>
+    GARAGE<span class="ver">v04141325</span><span>家庭車輛管理系統</span>
   </div>
+  <div id="syncStatus" style="font-size:11px;color:var(--text-muted);margin-right:8px;display:none"></div>
   <button class="btn btn-sm btn-secondary" onclick="showSettings()">⚙</button>
 </header>
 
@@ -647,14 +648,11 @@
     <!-- 油品選擇，加油時才顯示 -->
     <div id="fuelSection" style="display:none">
       <div class="form-group">
-        <label>⛽ 油品種類</label>
-        <div class="item-chips" id="fuelChips">
-          <span class="item-chip fuel-chip" onclick="selectFuel(this,'92')">92 無鉛</span>
-          <span class="item-chip fuel-chip" onclick="selectFuel(this,'95')">95 無鉛</span>
-          <span class="item-chip fuel-chip" onclick="selectFuel(this,'98')">98 無鉛</span>
-          <span class="item-chip fuel-chip" onclick="selectFuel(this,'柴油')">⚫ 柴油</span>
-          <span class="item-chip fuel-chip" onclick="selectFuel(this,'電')">⚡ 充電</span>
-        </div>
+        <label style="display:flex;justify-content:space-between;align-items:center">
+          <span>⛽ 油品種類</span>
+          <span id="cpcDateLabel" style="font-size:10px;color:var(--text-muted)"></span>
+        </label>
+        <div class="item-chips" id="fuelChips"></div>
       </div>
       <div class="form-row">
         <div class="form-group">
@@ -703,6 +701,19 @@
       <div class="text-muted" style="margin-top:4px">API Key 僅存於本機，不會上傳</div>
     </div>
 
+    <hr class="divider">
+    <div class="section-label">☁ JSONBin 雲端共享（選填）</div>
+    <div class="form-group">
+      <label>JSONBin API Key</label>
+      <input id="binApiKeyInput" type="password" placeholder="$2b$10$…">
+    </div>
+    <div class="form-group">
+      <label>Bin ID（車輛管理專用）</label>
+      <input id="binIdInput" type="text" placeholder="66xxxxxxxxxxxxxxxxxxxxxx">
+      <div class="text-muted" style="margin-top:4px">家庭成員填入相同 Bin ID 即可共享資料</div>
+    </div>
+    <button class="btn btn-secondary btn-sm btn-full" style="margin-bottom:4px" onclick="testBinConnection()">🔌 測試連線</button>
+
     <div class="flex gap-8" style="margin-top:4px">
       <button class="btn btn-secondary" style="flex:1" onclick="closeOverlay('overlaySettings')">關閉</button>
       <button class="btn btn-primary" style="flex:2" onclick="saveSettings()">儲存設定</button>
@@ -710,6 +721,10 @@
 
     <hr class="divider">
     <div class="section-label">資料管理</div>
+    <div class="flex gap-8" style="margin-bottom:8px">
+      <button class="btn btn-ai btn-sm" style="flex:1" onclick="syncFromBin()">⬇ 從雲端拉取</button>
+      <button class="btn btn-ai btn-sm" style="flex:1" onclick="syncToBin()">⬆ 推送到雲端</button>
+    </div>
     <div class="flex gap-8">
       <button class="btn btn-secondary btn-sm" style="flex:1" onclick="exportData()">📤 匯出 JSON</button>
       <button class="btn btn-secondary btn-sm" style="flex:1" onclick="importData()">📥 匯入 JSON</button>
@@ -727,13 +742,15 @@
 // ══════════════════════════════════════════════
 const DB_KEY = 'garage_data_v1';
 const SK_KEY = 'garage_sk';
+const BIN_KEY = 'garage_bin';   // { apiKey, binId }
 
 let db = { vehicles: [], maintenance: [] };
-let settings = { apiKey: '' };
+let settings = { apiKey: '', binApiKey: '', binId: '' };
 let currentVehicleId = null;
 let editingVehicleId = null;
 let selectedType = 'car';
 let selectedChips = new Set();
+let syncTimer = null;
 
 function loadDB() {
   try {
@@ -741,12 +758,96 @@ function loadDB() {
     if (raw) db = JSON.parse(raw);
     const sk = localStorage.getItem(SK_KEY);
     if (sk) settings.apiKey = sk;
+    const bin = localStorage.getItem(BIN_KEY);
+    if (bin) { const b = JSON.parse(bin); settings.binApiKey = b.apiKey||''; settings.binId = b.binId||''; }
   } catch(e) {}
 }
+
 function saveDB() {
   localStorage.setItem(DB_KEY, JSON.stringify(db));
+  // auto-push to cloud with debounce
+  if (settings.binApiKey && settings.binId) {
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => syncToBin(true), 1500);
+  }
 }
+
+function setSyncStatus(msg, color) {
+  const el = document.getElementById('syncStatus');
+  el.style.display = msg ? 'block' : 'none';
+  el.style.color = color || 'var(--text-muted)';
+  el.textContent = msg;
+}
+
+// ── JSONBin API ──
+const BIN_BASE = 'https://api.jsonbin.io/v3/b';
+
+async function syncToBin(silent) {
+  if (!settings.binApiKey || !settings.binId) {
+    if (!silent) alert('請先在設定填入 JSONBin API Key 和 Bin ID');
+    return;
+  }
+  setSyncStatus('⬆ 同步中…', 'var(--orange)');
+  try {
+    const res = await fetch(`${BIN_BASE}/${settings.binId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Master-Key': settings.binApiKey
+      },
+      body: JSON.stringify(db)
+    });
+    if (!res.ok) throw new Error(res.status);
+    setSyncStatus('✓ 已同步', 'var(--green)');
+    setTimeout(() => setSyncStatus(''), 3000);
+  } catch(e) {
+    setSyncStatus('✗ 同步失敗', 'var(--red)');
+    if (!silent) alert('推送失敗：' + e.message);
+  }
+}
+
+async function syncFromBin() {
+  if (!settings.binApiKey || !settings.binId) {
+    alert('請先在設定填入 JSONBin API Key 和 Bin ID');
+    return;
+  }
+  setSyncStatus('⬇ 拉取中…', 'var(--cyan)');
+  try {
+    const res = await fetch(`${BIN_BASE}/${settings.binId}/latest`, {
+      headers: { 'X-Master-Key': settings.binApiKey }
+    });
+    if (!res.ok) throw new Error(res.status);
+    const json = await res.json();
+    const data = json.record;
+    if (!data.vehicles || !data.maintenance) throw new Error('資料格式錯誤');
+    db = data;
+    localStorage.setItem(DB_KEY, JSON.stringify(db));
+    renderAll();
+    setSyncStatus('✓ 已更新', 'var(--green)');
+    setTimeout(() => setSyncStatus(''), 3000);
+    closeOverlay('overlaySettings');
+  } catch(e) {
+    setSyncStatus('✗ 拉取失敗', 'var(--red)');
+    alert('拉取失敗：' + e.message);
+  }
+}
+
+async function testBinConnection() {
+  const key = document.getElementById('binApiKeyInput').value.trim();
+  const id = document.getElementById('binIdInput').value.trim();
+  if (!key || !id) { alert('請填入 API Key 和 Bin ID'); return; }
+  try {
+    const res = await fetch(`${BIN_BASE}/${id}/latest`, {
+      headers: { 'X-Master-Key': key }
+    });
+    if (res.ok) alert('✅ 連線成功！');
+    else alert('❌ 連線失敗，請確認 API Key 和 Bin ID');
+  } catch(e) { alert('❌ 連線失敗：' + e.message); }
+}
+
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+
+
 
 // ── vehicle helpers ──
 function getVehicle(id) { return db.vehicles.find(v => v.id === id); }
@@ -1212,6 +1313,7 @@ function selectFuel(el, val) {
   selectedFuel = val;
   document.querySelectorAll('.fuel-chip').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
+  applyFuelPrice(val);
 }
 
 function calcFuelCost() {
@@ -1256,12 +1358,18 @@ function openAddMaint() {
   }
 
   document.getElementById('overlayMaint').classList.add('open');
+  initCpcPrices();
 }
 
 function toggleChip(el, val) {
-  el.classList.toggle('active');
-  if (el.classList.contains('active')) selectedChips.add(val);
-  else selectedChips.delete(val);
+  const isActive = el.classList.contains('active');
+  if (isActive) {
+    el.classList.remove('active');
+    selectedChips.delete(val);
+  } else {
+    el.classList.add('active');
+    selectedChips.add(val);
+  }
 
   const isRefuel = selectedChips.has('加油') || selectedChips.has('充電');
   const fuelSec = document.getElementById('fuelSection');
@@ -1271,10 +1379,107 @@ function toggleChip(el, val) {
     document.querySelectorAll('.fuel-chip').forEach(c => {
       c.classList.toggle('active', c.textContent.includes(selectedFuel));
     });
+    applyFuelPrice(selectedFuel);
   }
 }
 
 function syncChipsToInput() {}
+
+// ══════════════════════════════════════════════
+//   中油價格 CPC FUEL PRICES
+// ══════════════════════════════════════════════
+const CPC_KEY = 'garage_cpc_prices';
+
+function loadCpcPrices() {
+  try {
+    const raw = localStorage.getItem(CPC_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+function isCpcStale(data) {
+  if (!data?.fetchedAt) return true;
+  const age = Date.now() - new Date(data.fetchedAt).getTime();
+  return age > 7 * 24 * 60 * 60 * 1000; // 7天
+}
+
+async function fetchCpcPrices(force) {
+  const cached = loadCpcPrices();
+  if (!force && cached && !isCpcStale(cached)) return cached;
+  if (!settings.apiKey) return cached;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 500,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{ role: 'user', content: `請搜尋台灣中油本週最新油價，只輸出 JSON 不要其他文字：{"92":31.5,"95":33.0,"98":35.5,"柴油":28.5,"fetchedAt":"${new Date().toISOString()}","weekLabel":"本週中油價格"}` }]
+      })
+    });
+    const data = await resp.json();
+    let text = data.content.filter(c => c.type==='text').map(c=>c.text).join('');
+    text = text.replace(/```json|```/g,'').trim();
+    const prices = JSON.parse(text);
+    prices.fetchedAt = new Date().toISOString();
+    localStorage.setItem(CPC_KEY, JSON.stringify(prices));
+    return prices;
+  } catch(e) { return cached; }
+}
+
+function renderCpcBar(prices) {
+  const chipsEl = document.getElementById('fuelChips');
+  const dateEl = document.getElementById('cpcDateLabel');
+  if (!chipsEl) return;
+
+  const date = prices?.fetchedAt
+    ? new Date(prices.fetchedAt).toLocaleDateString('zh-TW',{month:'numeric',day:'numeric'}) + ' 更新'
+    : '';
+  if (dateEl) dateEl.textContent = date;
+
+  const fuels = [
+    { key:'92', label:'92' },
+    { key:'95', label:'95' },
+    { key:'98', label:'98' },
+    { key:'柴油', label:'⚫ 柴油' },
+    { key:'電',  label:'⚡ 充電' },
+  ];
+  chipsEl.innerHTML = fuels.map(f => {
+    const price = prices?.[f.key];
+    const priceStr = price ? `<span style="font-family:Rajdhani,sans-serif;font-size:13px;font-weight:700;margin-left:3px;color:var(--orange)">${price}</span>` : '';
+    return `<span class="item-chip fuel-chip" onclick="selectFuel(this,'${f.key}')">${f.label}${priceStr}</span>`;
+  }).join('');
+}
+
+function applyFuelPrice(fuelType) {
+  const prices = loadCpcPrices();
+  if (!prices) return;
+  const price = prices[fuelType];
+  if (price) {
+    document.getElementById('mUnitPrice').value = price;
+    calcFuelCost();
+  }
+}
+
+async function initCpcPrices() {
+  // render immediately with cached or null
+  const cached = loadCpcPrices();
+  renderCpcBar(cached);
+  // then fetch if stale
+  const fresh = await fetchCpcPrices(false);
+  if (fresh) renderCpcBar(fresh);
+  // restore selected fuel highlight
+  if (selectedFuel) {
+    document.querySelectorAll('.fuel-chip').forEach(c => {
+      c.classList.toggle('active', c.dataset.fuel === selectedFuel || c.textContent.startsWith(selectedFuel));
+    });
+    applyFuelPrice(selectedFuel);
+  }
+}
+
+
 
 function saveMaint() {
   const date = document.getElementById('mDate').value;
@@ -1476,11 +1681,16 @@ function clearScheduleCache(vid) {
 // ══════════════════════════════════════════════
 function showSettings() {
   document.getElementById('apiKeyInput').value = settings.apiKey || '';
+  document.getElementById('binApiKeyInput').value = settings.binApiKey || '';
+  document.getElementById('binIdInput').value = settings.binId || '';
   document.getElementById('overlaySettings').classList.add('open');
 }
 function saveSettings() {
   settings.apiKey = document.getElementById('apiKeyInput').value.trim();
+  settings.binApiKey = document.getElementById('binApiKeyInput').value.trim();
+  settings.binId = document.getElementById('binIdInput').value.trim();
   localStorage.setItem(SK_KEY, settings.apiKey);
+  localStorage.setItem(BIN_KEY, JSON.stringify({ apiKey: settings.binApiKey, binId: settings.binId }));
   closeOverlay('overlaySettings');
   alert('設定已儲存');
 }
@@ -1538,6 +1748,10 @@ document.querySelectorAll('.overlay').forEach(o => {
 // ══════════════════════════════════════════════
 loadDB();
 renderAll();
+// auto-pull from cloud on startup
+if (settings.binApiKey && settings.binId) {
+  syncFromBin();
+}
 </script>
 </body>
 </html>
