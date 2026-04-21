@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>家庭車輛管理系統 v04142228</title>
+<title>家庭車輛管理系統 v04141345</title>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
 
@@ -528,7 +531,7 @@
 
 <header>
   <div class="logo">
-    GARAGE<span class="ver">v04141325</span><span>家庭車輛管理系統</span>
+    GARAGE<span class="ver">v04141408</span><span>家庭車輛管理系統</span>
   </div>
   <div id="syncStatus" style="font-size:11px;color:var(--text-muted);margin-right:8px;display:none"></div>
   <button class="btn btn-sm btn-secondary" onclick="showSettings()">⚙</button>
@@ -660,8 +663,8 @@
           <input id="mLiters" type="number" placeholder="30" step="0.1">
         </div>
         <div class="form-group">
-          <label>單價 (NT$/公升)</label>
-          <input id="mUnitPrice" type="number" placeholder="31.5" step="0.1" oninput="calcFuelCost()">
+          <label>油價 (元/公升)</label>
+          <input id="mUnitPrice" type="number" placeholder="自動帶入" step="0.1" oninput="calcFuelCost()">
         </div>
       </div>
     </div>
@@ -695,10 +698,11 @@
     <div class="overlay-handle"></div>
     <div class="overlay-title">⚙ 系統設定</div>
 
+    <div style="display:none">
     <div class="form-group">
       <label>Anthropic API Key（自動查詢保養項目用）</label>
       <input id="apiKeyInput" type="password" placeholder="sk-ant-…">
-      <div class="text-muted" style="margin-top:4px">API Key 僅存於本機，不會上傳</div>
+      <div class="text-muted" style="margin-top:4px">API Key 僅存於本機,不會上傳</div>
     </div>
 
     <hr class="divider">
@@ -713,12 +717,22 @@
       <div class="text-muted" style="margin-top:4px">家庭成員填入相同 Bin ID 即可共享資料</div>
     </div>
     <button class="btn btn-secondary btn-sm btn-full" style="margin-bottom:4px" onclick="testBinConnection()">🔌 測試連線</button>
+    </div>
+
+    <div class="section-label">📡 手機對手機同步（P2P）</div>
+    <div id="p2pStatus" class="text-muted" style="margin-bottom:8px;font-size:12px">尚未配對</div>
+    <div class="flex gap-8" style="margin-bottom:8px">
+      <button class="btn btn-ai btn-sm" style="flex:1" onclick="showPairQR()">📱 顯示配對 QR</button>
+      <button class="btn btn-ai btn-sm" style="flex:1" onclick="startScanQR()">📷 掃描配對</button>
+    </div>
+    <div id="pairedPeers" style="margin-bottom:8px"></div>
 
     <div class="flex gap-8" style="margin-top:4px">
       <button class="btn btn-secondary" style="flex:1" onclick="closeOverlay('overlaySettings')">關閉</button>
       <button class="btn btn-primary" style="flex:2" onclick="saveSettings()">儲存設定</button>
     </div>
 
+    <div style="display:none">
     <hr class="divider">
     <div class="section-label">資料管理</div>
     <div class="flex gap-8" style="margin-bottom:8px">
@@ -730,9 +744,36 @@
       <button class="btn btn-secondary btn-sm" style="flex:1" onclick="importData()">📥 匯入 JSON</button>
     </div>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="handleImport(event)">
+    </div>
+
 
     <hr class="divider">
     <button class="btn btn-danger btn-sm btn-full" onclick="clearAllData()">🗑 清除所有資料</button>
+  </div>
+</div>
+
+<!-- ═══ P2P 配對 QR 顯示 ═══ -->
+<div class="overlay" id="overlayPairQR">
+  <div class="overlay-panel">
+    <div class="overlay-handle"></div>
+    <div class="overlay-title">📱 配對 QR Code</div>
+    <div class="text-muted" style="text-align:center;margin-bottom:12px;font-size:13px">
+      請家人用「掃描配對」按鈕對準下方 QR Code
+    </div>
+    <div id="qrCanvas" style="display:flex;justify-content:center;background:#fff;padding:16px;border-radius:12px;margin-bottom:12px"></div>
+    <div class="text-muted" id="myPeerIdDisplay" style="text-align:center;font-family:Rajdhani,sans-serif;font-size:12px;margin-bottom:12px"></div>
+    <button class="btn btn-primary btn-full" onclick="closeOverlay('overlayPairQR')">關閉</button>
+  </div>
+</div>
+
+<!-- ═══ P2P 掃描 QR ═══ -->
+<div class="overlay" id="overlayScanQR">
+  <div class="overlay-panel">
+    <div class="overlay-handle"></div>
+    <div class="overlay-title">📷 掃描配對 QR</div>
+    <div id="qrReader" style="width:100%;border-radius:12px;overflow:hidden;margin-bottom:12px"></div>
+    <div id="scanStatus" class="text-muted" style="text-align:center;margin-bottom:12px;font-size:13px">對準家人的 QR Code</div>
+    <button class="btn btn-primary btn-full" onclick="stopScanQR()">取消</button>
   </div>
 </div>
 
@@ -770,6 +811,8 @@ function saveDB() {
     clearTimeout(syncTimer);
     syncTimer = setTimeout(() => syncToBin(true), 1500);
   }
+  // broadcast to connected peers
+  broadcastP2p();
 }
 
 function setSyncStatus(msg, color) {
@@ -846,6 +889,222 @@ async function testBinConnection() {
 }
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+
+// ══════════════════════════════════════════════
+//   P2P 同步 (PeerJS)
+// ══════════════════════════════════════════════
+const P2P_KEY = 'garage_p2p';
+let myPeer = null;
+let myPeerId = null;
+let p2pState = { connections: {} };   // peerId -> DataConnection
+let pairedPeerIds = [];               // 儲存的對方 peer ID
+let qrScanner = null;
+
+function loadP2pConfig() {
+  try {
+    const raw = localStorage.getItem(P2P_KEY);
+    if (raw) {
+      const cfg = JSON.parse(raw);
+      myPeerId = cfg.myId || null;
+      pairedPeerIds = cfg.paired || [];
+    }
+  } catch(e) {}
+}
+
+function saveP2pConfig() {
+  localStorage.setItem(P2P_KEY, JSON.stringify({
+    myId: myPeerId,
+    paired: pairedPeerIds
+  }));
+}
+
+function initP2P() {
+  if (typeof Peer === 'undefined') return;
+
+  // use stored ID or generate new one (short, easy)
+  if (!myPeerId) {
+    myPeerId = 'garage-' + Math.random().toString(36).slice(2, 10);
+    saveP2pConfig();
+  }
+
+  try {
+    myPeer = new Peer(myPeerId);
+  } catch(e) {
+    console.log('Peer init failed', e);
+    return;
+  }
+
+  myPeer.on('open', id => {
+    console.log('P2P 上線', id);
+    updateP2pStatus();
+    // 自動嘗試連接已配對的對方
+    pairedPeerIds.forEach(pid => connectToPeer(pid));
+  });
+
+  myPeer.on('connection', conn => {
+    console.log('對方來連線', conn.peer);
+    handleConnection(conn);
+  });
+
+  myPeer.on('error', err => {
+    console.log('Peer error', err.type);
+    updateP2pStatus();
+  });
+}
+
+function connectToPeer(peerId) {
+  if (!myPeer || p2pState.connections[peerId]?.open) return;
+  const conn = myPeer.connect(peerId, { reliable: true });
+  handleConnection(conn);
+}
+
+function handleConnection(conn) {
+  p2pState.connections[conn.peer] = conn;
+
+  conn.on('open', () => {
+    console.log('連線成功', conn.peer);
+    // 自動把對方加入已配對
+    if (!pairedPeerIds.includes(conn.peer)) {
+      pairedPeerIds.push(conn.peer);
+      saveP2pConfig();
+    }
+    updateP2pStatus();
+    // 交換資料
+    conn.send({ type: 'sync', db: db });
+  });
+
+  conn.on('data', msg => {
+    if (msg.type === 'sync' && msg.db) {
+      mergeDb(msg.db);
+      renderAll();
+      setSyncStatus('✓ P2P 已同步', 'var(--green)');
+      setTimeout(() => setSyncStatus(''), 3000);
+    }
+  });
+
+  conn.on('close', () => {
+    delete p2pState.connections[conn.peer];
+    updateP2pStatus();
+  });
+
+  conn.on('error', () => {
+    delete p2pState.connections[conn.peer];
+    updateP2pStatus();
+  });
+}
+
+function mergeDb(remote) {
+  if (!remote.vehicles || !remote.maintenance) return;
+
+  // 以 ID 合併：本機沒有的就加入
+  const vIds = new Set(db.vehicles.map(v => v.id));
+  remote.vehicles.forEach(v => {
+    if (!vIds.has(v.id)) db.vehicles.push(v);
+  });
+
+  const mIds = new Set(db.maintenance.map(m => m.id));
+  remote.maintenance.forEach(m => {
+    if (!mIds.has(m.id)) db.maintenance.push(m);
+  });
+
+  localStorage.setItem(DB_KEY, JSON.stringify(db));
+}
+
+function broadcastP2p() {
+  Object.values(p2pState.connections).forEach(conn => {
+    if (conn.open) conn.send({ type: 'sync', db: db });
+  });
+}
+
+function updateP2pStatus() {
+  const el = document.getElementById('p2pStatus');
+  const pairedEl = document.getElementById('pairedPeers');
+  if (!el) return;
+
+  const active = Object.values(p2pState.connections).filter(c => c.open).length;
+  if (!myPeer || !myPeer.open) {
+    el.innerHTML = '<span style="color:var(--text-muted)">🔴 離線</span>';
+  } else if (active > 0) {
+    el.innerHTML = `<span style="color:var(--green)">🟢 已連線 ${active} 台家人手機</span>`;
+  } else if (pairedPeerIds.length > 0) {
+    el.innerHTML = '<span style="color:var(--orange)">🟡 等待家人手機上線…</span>';
+  } else {
+    el.innerHTML = '<span style="color:var(--text-muted)">尚未配對</span>';
+  }
+
+  if (pairedEl) {
+    if (pairedPeerIds.length === 0) {
+      pairedEl.innerHTML = '';
+    } else {
+      pairedEl.innerHTML = `<div class="text-muted" style="font-size:11px;margin-bottom:4px">已配對：</div>` +
+        pairedPeerIds.map(pid => {
+          const online = p2pState.connections[pid]?.open;
+          return `<div style="display:flex;justify-content:space-between;align-items:center;background:var(--surface3);border-radius:6px;padding:6px 10px;margin-bottom:4px;font-size:12px">
+            <span>${online?'🟢':'⚪'} <span style="font-family:Rajdhani,sans-serif">${pid}</span></span>
+            <button onclick="removePairedPeer('${pid}')" style="background:none;border:none;color:var(--red);cursor:pointer">✕</button>
+          </div>`;
+        }).join('');
+    }
+  }
+}
+
+function removePairedPeer(pid) {
+  pairedPeerIds = pairedPeerIds.filter(p => p !== pid);
+  if (p2pState.connections[pid]) {
+    p2pState.connections[pid].close();
+    delete p2pState.connections[pid];
+  }
+  saveP2pConfig();
+  updateP2pStatus();
+}
+
+function showPairQR() {
+  if (!myPeerId) { alert('P2P 初始化中，請稍後重試'); return; }
+  document.getElementById('overlayPairQR').classList.add('open');
+  document.getElementById('myPeerIdDisplay').textContent = '我的 ID: ' + myPeerId;
+
+  // 產生 QR Code
+  const canvas = document.getElementById('qrCanvas');
+  canvas.innerHTML = '';
+  QRCode.toCanvas(myPeerId, { width: 240, margin: 1 }, (err, cv) => {
+    if (!err) canvas.appendChild(cv);
+  });
+}
+
+function startScanQR() {
+  document.getElementById('overlayScanQR').classList.add('open');
+  const reader = document.getElementById('qrReader');
+  reader.innerHTML = '';
+
+  qrScanner = new Html5Qrcode('qrReader');
+  qrScanner.start(
+    { facingMode: 'environment' },
+    { fps: 10, qrbox: 220 },
+    (decoded) => {
+      if (decoded && decoded.startsWith('garage-')) {
+        document.getElementById('scanStatus').innerHTML = '✅ 已掃描：' + decoded;
+        if (!pairedPeerIds.includes(decoded)) {
+          pairedPeerIds.push(decoded);
+          saveP2pConfig();
+        }
+        connectToPeer(decoded);
+        setTimeout(() => stopScanQR(), 1000);
+      }
+    },
+    () => {} // ignore scan errors
+  ).catch(err => {
+    document.getElementById('scanStatus').innerHTML = '<span style="color:var(--red)">❌ 相機啟動失敗：' + err + '</span>';
+  });
+}
+
+function stopScanQR() {
+  if (qrScanner) {
+    qrScanner.stop().catch(() => {});
+    qrScanner = null;
+  }
+  closeOverlay('overlayScanQR');
+}
+
 
 
 
@@ -1434,21 +1693,24 @@ function renderCpcBar(prices) {
   const dateEl = document.getElementById('cpcDateLabel');
   if (!chipsEl) return;
 
-  const date = prices?.fetchedAt
-    ? new Date(prices.fetchedAt).toLocaleDateString('zh-TW',{month:'numeric',day:'numeric'}) + ' 更新'
-    : '';
-  if (dateEl) dateEl.textContent = date;
+  if (dateEl) {
+    dateEl.textContent = prices?.fetchedAt
+      ? `中油 ${new Date(prices.fetchedAt).getMonth()+1}/${new Date(prices.fetchedAt).getDate()} 更新`
+      : '中油牌價載入中…';
+  }
 
   const fuels = [
-    { key:'92', label:'92' },
-    { key:'95', label:'95' },
-    { key:'98', label:'98' },
+    { key:'92',   label:'92' },
+    { key:'95',   label:'95' },
+    { key:'98',   label:'98' },
     { key:'柴油', label:'⚫ 柴油' },
-    { key:'電',  label:'⚡ 充電' },
+    { key:'電',   label:'⚡ 充電' },
   ];
   chipsEl.innerHTML = fuels.map(f => {
     const price = prices?.[f.key];
-    const priceStr = price ? `<span style="font-family:Rajdhani,sans-serif;font-size:13px;font-weight:700;margin-left:3px;color:var(--orange)">${price}</span>` : '';
+    const priceStr = price
+      ? `<span style="font-family:Rajdhani,sans-serif;font-size:12px;font-weight:700;margin-left:4px;color:var(--orange)">${price}</span>`
+      : '';
     return `<span class="item-chip fuel-chip" onclick="selectFuel(this,'${f.key}')">${f.label}${priceStr}</span>`;
   }).join('');
 }
@@ -1747,11 +2009,9 @@ document.querySelectorAll('.overlay').forEach(o => {
 //   INIT
 // ══════════════════════════════════════════════
 loadDB();
+loadP2pConfig();
 renderAll();
-// auto-pull from cloud on startup
-if (settings.binApiKey && settings.binId) {
-  syncFromBin();
-}
+initP2P();
 </script>
 </body>
 </html>
