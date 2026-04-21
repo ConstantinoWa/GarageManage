@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>家庭車輛管理系統 v04141345</title>
+<title>家庭車輛管理系統 v04220717</title>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -531,7 +531,7 @@
 
 <header>
   <div class="logo">
-    GARAGE<span class="ver">v04141408</span><span>家庭車輛管理系統</span>
+    GARAGE<span class="ver">v04220717</span><span>家庭車輛管理系統</span>
   </div>
   <div id="syncStatus" style="font-size:11px;color:var(--text-muted);margin-right:8px;display:none"></div>
   <button class="btn btn-sm btn-secondary" onclick="showSettings()">⚙</button>
@@ -725,6 +725,7 @@
       <button class="btn btn-ai btn-sm" style="flex:1" onclick="showPairQR()">📱 顯示配對 QR</button>
       <button class="btn btn-ai btn-sm" style="flex:1" onclick="startScanQR()">📷 掃描配對</button>
     </div>
+    <button class="btn btn-secondary btn-sm btn-full" style="margin-bottom:8px" onclick="manualPair()">⌨ 手動輸入對方 ID</button>
     <div id="pairedPeers" style="margin-bottom:8px"></div>
 
     <div class="flex gap-8" style="margin-top:4px">
@@ -1059,16 +1060,67 @@ function removePairedPeer(pid) {
 }
 
 function showPairQR() {
-  if (!myPeerId) { alert('P2P 初始化中，請稍後重試'); return; }
+  if (!myPeerId) {
+    alert('P2P 尚未初始化，請確認網路後重新開啟 app');
+    return;
+  }
   document.getElementById('overlayPairQR').classList.add('open');
-  document.getElementById('myPeerIdDisplay').textContent = '我的 ID: ' + myPeerId;
+  document.getElementById('myPeerIdDisplay').innerHTML =
+    `我的 ID: <span style="color:var(--orange);user-select:all" onclick="copyMyId()">${myPeerId}</span> <button onclick="copyMyId()" style="background:none;border:1px solid var(--border);color:var(--cyan);border-radius:4px;padding:2px 6px;font-size:11px;cursor:pointer;margin-left:4px">📋 複製</button>`;
 
-  // 產生 QR Code
   const canvas = document.getElementById('qrCanvas');
-  canvas.innerHTML = '';
-  QRCode.toCanvas(myPeerId, { width: 240, margin: 1 }, (err, cv) => {
-    if (!err) canvas.appendChild(cv);
-  });
+  canvas.innerHTML = '<div style="color:#888;font-size:12px">產生中…</div>';
+
+  // 方法1: 嘗試 qrcode 函式庫（canvas）
+  if (typeof QRCode !== 'undefined' && QRCode.toCanvas) {
+    QRCode.toCanvas(myPeerId, { width: 240, margin: 1 }, (err, cv) => {
+      if (!err && cv) {
+        canvas.innerHTML = '';
+        canvas.appendChild(cv);
+      } else {
+        fallbackQrImage(canvas);
+      }
+    });
+  } else {
+    fallbackQrImage(canvas);
+  }
+}
+
+function fallbackQrImage(canvas) {
+  // 方法2: 用線上 QR 服務產生圖片
+  const url = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(myPeerId)}`;
+  const img = new Image();
+  img.src = url;
+  img.style.width = '240px';
+  img.style.height = '240px';
+  img.onload = () => { canvas.innerHTML = ''; canvas.appendChild(img); };
+  img.onerror = () => {
+    canvas.innerHTML = `<div style="color:var(--red);text-align:center;padding:20px">
+      QR 產生失敗，請用下方 ID 手動配對<br>
+      <span style="color:var(--orange);font-family:Rajdhani,sans-serif;font-size:20px;user-select:all;display:block;margin-top:10px;padding:10px;background:#222;border-radius:6px">${myPeerId}</span>
+    </div>`;
+  };
+}
+
+function copyMyId() {
+  if (!myPeerId) return;
+  navigator.clipboard?.writeText(myPeerId).then(
+    () => alert('已複製 ID: ' + myPeerId),
+    () => prompt('請手動複製 ID:', myPeerId)
+  );
+}
+
+function manualPair() {
+  const id = prompt('請輸入對方的配對 ID（以 garage- 開頭）:');
+  if (!id || !id.trim()) return;
+  const peerId = id.trim();
+  if (!pairedPeerIds.includes(peerId)) {
+    pairedPeerIds.push(peerId);
+    saveP2pConfig();
+  }
+  connectToPeer(peerId);
+  updateP2pStatus();
+  alert('已加入配對: ' + peerId);
 }
 
 function startScanQR() {
