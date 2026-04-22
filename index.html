@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>家庭車輛管理系統 v04220717</title>
+<title>家庭車輛管理系統 v04221325</title>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -531,7 +531,7 @@
 
 <header>
   <div class="logo">
-    GARAGE<span class="ver">v04220717</span><span>家庭車輛管理系統</span>
+    GARAGE<span class="ver">v04221325<span id="lastSyncLabel" style="color:var(--green);margin-left:4px"></span></span><span>家庭車輛管理系統</span>
   </div>
   <div id="syncStatus" style="font-size:11px;color:var(--text-muted);margin-right:8px;display:none"></div>
   <button class="btn btn-sm btn-secondary" onclick="showSettings()">⚙</button>
@@ -719,7 +719,10 @@
     <button class="btn btn-secondary btn-sm btn-full" style="margin-bottom:4px" onclick="testBinConnection()">🔌 測試連線</button>
     </div>
 
-    <div class="section-label">📡 手機對手機同步（P2P）</div>
+    <div class="section-label" style="display:flex;justify-content:space-between;align-items:center">
+      <span>📡 手機對手機同步（P2P）</span>
+      <span id="syncDailyCount" style="font-size:10px;color:var(--cyan);letter-spacing:0"></span>
+    </div>
     <div id="p2pStatus" class="text-muted" style="margin-bottom:8px;font-size:12px">尚未配對</div>
     <div class="flex gap-8" style="margin-bottom:8px">
       <button class="btn btn-ai btn-sm" style="flex:1" onclick="showPairQR()">📱 顯示配對 QR</button>
@@ -919,6 +922,49 @@ function saveP2pConfig() {
   }));
 }
 
+// P2P 同步統計
+const P2P_SYNC_KEY = 'garage_p2p_sync';
+function getSyncStats() {
+  try {
+    return JSON.parse(localStorage.getItem(P2P_SYNC_KEY)) || { lastAt: null, dailyCount: 0, dailyDate: '' };
+  } catch(e) { return { lastAt: null, dailyCount: 0, dailyDate: '' }; }
+}
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function recordP2pSync() {
+  const s = getSyncStats();
+  const today = todayStr();
+  if (s.dailyDate !== today) { s.dailyDate = today; s.dailyCount = 0; }
+  s.dailyCount++;
+  s.lastAt = new Date().toISOString();
+  localStorage.setItem(P2P_SYNC_KEY, JSON.stringify(s));
+  updateSyncDisplay();
+}
+function updateSyncDisplay() {
+  const s = getSyncStats();
+  const today = todayStr();
+  const count = (s.dailyDate === today) ? s.dailyCount : 0;
+
+  // header 版本號旁邊的上次同步時間
+  const verEl = document.getElementById('lastSyncLabel');
+  if (verEl) {
+    if (s.lastAt) {
+      const d = new Date(s.lastAt);
+      verEl.textContent = ` ${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')} 同步`;
+    } else {
+      verEl.textContent = '';
+    }
+  }
+
+  // 設定頁 P2P 標題旁的同步次數
+  const cntEl = document.getElementById('syncDailyCount');
+  if (cntEl) {
+    cntEl.textContent = count > 0 ? `今日同步 ${count} 次` : '';
+  }
+}
+
 function initP2P() {
   if (typeof Peer === 'undefined') return;
 
@@ -978,6 +1024,7 @@ function handleConnection(conn) {
     if (msg.type === 'sync' && msg.db) {
       mergeDb(msg.db);
       renderAll();
+      recordP2pSync();
       setSyncStatus('✓ P2P 已同步', 'var(--green)');
       setTimeout(() => setSyncStatus(''), 3000);
     }
@@ -1998,6 +2045,7 @@ function showSettings() {
   document.getElementById('binApiKeyInput').value = settings.binApiKey || '';
   document.getElementById('binIdInput').value = settings.binId || '';
   document.getElementById('overlaySettings').classList.add('open');
+  updateSyncDisplay();
 }
 function saveSettings() {
   settings.apiKey = document.getElementById('apiKeyInput').value.trim();
@@ -2064,6 +2112,7 @@ loadDB();
 loadP2pConfig();
 renderAll();
 initP2P();
+updateSyncDisplay();
 </script>
 </body>
 </html>
