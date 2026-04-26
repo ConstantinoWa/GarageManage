@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>家庭車輛管理系統 v04221325</title>
+<title>家庭車輛管理系統 v04261103</title>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -521,6 +521,22 @@
     margin-right: 4px;
   }
 
+  .btn-km-adj {
+    flex: 0 0 auto;
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    color: var(--cyan);
+    border-radius: 5px;
+    padding: 8px 0;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    width: 24px;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .btn-km-adj:active { background: var(--orange); color: #fff; }
+
   /* scrollbar */
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -531,7 +547,7 @@
 
 <header>
   <div class="logo">
-    GARAGE<span class="ver">v04221325<span id="lastSyncLabel" style="color:var(--green);margin-left:4px"></span></span><span>家庭車輛管理系統</span>
+    GARAGE<span class="ver">v04261103<span id="lastSyncLabel" style="color:var(--green);margin-left:4px"></span></span><span>家庭車輛管理系統</span>
   </div>
   <div id="syncStatus" style="font-size:11px;color:var(--text-muted);margin-right:8px;display:none"></div>
   <button class="btn btn-sm btn-secondary" onclick="showSettings()">⚙</button>
@@ -631,14 +647,19 @@
     <div class="overlay-handle"></div>
     <div class="overlay-title">新增維護記錄</div>
 
-    <div class="form-row">
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:10px">
       <div class="form-group">
         <label>維護日期</label>
-        <input id="mDate" type="date">
+        <input id="mDate" type="date" style="font-size:13px;padding:10px 8px">
       </div>
       <div class="form-group">
         <label>當下里程 (km)</label>
-        <input id="mKm" type="number" placeholder="30000">
+        <div style="display:flex;gap:3px;align-items:center">
+          <button type="button" class="btn-km-adj" onclick="adjustKm(-1)">−</button>
+          <input id="mKm" type="number" placeholder="30000" style="flex:1;text-align:center;min-width:0;font-size:16px;font-weight:700;padding:10px 4px;color:var(--orange)">
+          <button type="button" class="btn-km-adj" onclick="adjustKm(1)">+</button>
+          <button type="button" class="btn-km-adj" style="width:34px" onclick="adjustKm(10)">+10</button>
+        </div>
       </div>
     </div>
 
@@ -1643,28 +1664,6 @@ const MAINT_PRESETS = {
   emicro: ['充電','電池檢查','電池容量測試','電池更換','前煞車皮','後煞車皮','輪胎更換','輪胎氣壓','傳動皮帶','剎車液','車燈檢查','充電器檢查','控制器檢查'],
 };
 
-function openAddMaint() {
-  if (!currentVehicleId) { alert('請先選擇車輛'); return; }
-  selectedChips.clear();
-
-  // set today
-  document.getElementById('mDate').value = new Date().toISOString().slice(0,10);
-  document.getElementById('mKm').value = '';
-  document.getElementById('mItems').value = '';
-  document.getElementById('mCost').value = '';
-  document.getElementById('mShop').value = '';
-  document.getElementById('mNote').value = '';
-
-  // preset chips
-  const v = getVehicle(currentVehicleId);
-  const presets = MAINT_PRESETS[v?.type] || MAINT_PRESETS.car;
-  document.getElementById('maintItemChips').innerHTML = presets.map(p =>
-    `<span class="item-chip" onclick="toggleChip(this,'${p}')">${p}</span>`
-  ).join('');
-
-  document.getElementById('overlayMaint').classList.add('open');
-}
-
 let selectedFuel = '';
 
 function selectFuel(el, val) {
@@ -1692,10 +1691,18 @@ function openAddMaint() {
   selectedFuel = '';
 
   document.getElementById('mDate').value = new Date().toISOString().slice(0,10);
-  document.getElementById('mKm').value = '';
+
+  // 自動帶入上次里程（用最後一筆有里程的記錄，或車輛目前里程）
+  const v = getVehicle(currentVehicleId);
+  const lastRec = getMaintByVehicle(currentVehicleId).find(r => r.km > 0);
+  const startKm = lastRec?.km || v?.currentKm || 0;
+  document.getElementById('mKm').value = startKm || '';
+
   document.getElementById('mItems').value = '';
   document.getElementById('mCost').value = '';
-  document.getElementById('mShop').value = '';
+  // 帶入上次維修廠（沒有就空白）
+  const lastWithShop = getMaintByVehicle(currentVehicleId).find(r => r.shop);
+  document.getElementById('mShop').value = lastWithShop?.shop || '';
   document.getElementById('mNote').value = '';
   document.getElementById('mLiters').value = '';
   document.getElementById('mUnitPrice').value = '';
@@ -1703,7 +1710,6 @@ function openAddMaint() {
   document.querySelectorAll('.fuel-chip').forEach(c => c.classList.remove('active'));
 
   // preset chips
-  const v = getVehicle(currentVehicleId);
   const presets = MAINT_PRESETS[v?.type] || MAINT_PRESETS.car;
   document.getElementById('maintItemChips').innerHTML = presets.map(p =>
     `<span class="item-chip" onclick="toggleChip(this,'${p}')">${p}</span>`
@@ -1717,6 +1723,13 @@ function openAddMaint() {
 
   document.getElementById('overlayMaint').classList.add('open');
   initCpcPrices();
+}
+
+function adjustKm(delta) {
+  const el = document.getElementById('mKm');
+  const cur = parseInt(el.value) || 0;
+  const nv = Math.max(0, cur + delta);
+  el.value = nv;
 }
 
 function toggleChip(el, val) {
